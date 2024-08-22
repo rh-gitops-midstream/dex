@@ -102,6 +102,9 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240730163845-b1a4ccb954bf // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/sync v0.7.0 //indirect
+	github.com/mattn/go-runewidth v0.0.9 //indirect
 )
 
 replace github.com/dexidp/dex/api/v2 => ./api/v2
