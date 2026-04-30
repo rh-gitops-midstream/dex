@@ -2,6 +2,8 @@ module github.com/dexidp/dex
 
 go 1.24.0
 
+toolchain go1.26.2
+
 require (
 	cloud.google.com/go/compute/metadata v0.7.0
 	entgo.io/ent v0.14.4
