@@ -2,7 +2,7 @@ module github.com/dexidp/dex
 
 go 1.24.0
 
-toolchain go1.26.2
+toolchain go1.25.9
 
 require (
 	cloud.google.com/go/compute/metadata v0.7.0
