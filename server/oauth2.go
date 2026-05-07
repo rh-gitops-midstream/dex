@@ -402,16 +402,16 @@ func (s *Server) newIDToken(ctx context.Context, clientID string, claims storage
 	}
 
 	for _, scope := range scopes {
-		switch scope {
-		case scopeEmail:
+		switch {
+		case scope == scopeEmail:
 			tok.Email = claims.Email
 			tok.EmailVerified = &claims.EmailVerified
-		case scopeGroups:
+		case scope == scopeGroups:
 			tok.Groups = claims.Groups
-		case scopeProfile:
+		case scope == scopeProfile:
 			tok.Name = claims.Username
 			tok.PreferredUsername = claims.PreferredUsername
-		case scopeFederatedID:
+		case scope == scopeFederatedID:
 			tok.FederatedIDClaims = &federatedIDClaims{
 				ConnectorID: connID,
 				UserID:      claims.UserID,
@@ -518,7 +518,7 @@ func (s *Server) parseAuthorizationRequest(r *http.Request) (*storage.AuthReques
 
 	if codeChallengeMethod != codeChallengeMethodS256 && codeChallengeMethod != codeChallengeMethodPlain {
 		description := fmt.Sprintf("Unsupported PKCE challenge method (%q).", codeChallengeMethod)
-		return nil, newRedirectedErr(errInvalidRequest, "%s", description)
+		return nil, newRedirectedErr(errInvalidRequest, description)
 	}
 
 	var (
@@ -602,7 +602,7 @@ func (s *Server) parseAuthorizationRequest(r *http.Request) (*storage.AuthReques
 	if rt.token {
 		if redirectURI == redirectURIOOB {
 			err := fmt.Sprintf("Cannot use response type 'token' with redirect_uri '%s'.", redirectURIOOB)
-			return nil, newRedirectedErr(errInvalidRequest, "%s", err)
+			return nil, newRedirectedErr(errInvalidRequest, err)
 		}
 	}
 
@@ -720,7 +720,7 @@ func (s *storageKeySet) VerifySignature(ctx context.Context, jwt string) (payloa
 		break
 	}
 
-	skeys, err := s.GetKeys(ctx)
+	skeys, err := s.Storage.GetKeys(ctx)
 	if err != nil {
 		return nil, err
 	}

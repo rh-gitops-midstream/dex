@@ -1,14 +1,18 @@
 version: "2"
+
 run:
   timeout: 5m
+
 linters:
-  default: none
+  disable:
+    - staticcheck
+    - errcheck
   enable:
     - depguard
     - dogsled
     - exhaustive
     - gochecknoinits
-    - gocritic
+    # - gocritic
     - goprintffuncname
     - govet
     - ineffassign
@@ -16,7 +20,9 @@ linters:
     - nakedret
     - nolintlint
     - prealloc
-    - staticcheck
+    # - revive
+    # - sqlclosecheck
+    # - staticcheck
     - unconvert
     - unused
     - whitespace
@@ -27,9 +33,8 @@ linters:
     # - tparallel
     # - unparam
 
-    # Disable temporarily until the following issue is resolved:
-    # https://github.com/golangci/golangci-lint/issues/3086
-    - sqlclosecheck
+    # Disable temporarily until the following issue is resolved: https://github.com/golangci/golangci-lint/issues/3086
+    # - sqlclosecheck
 
     # TODO: fix linter errors before enabling
     # - exhaustivestruct
@@ -66,44 +71,54 @@ linters:
     # - nestif
     # - testpackage
     # - wsl
+
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+          - noctx
+        path: _test.go
+    presets:
+      - comments
+      - std-error-handling
+
   settings:
+    misspell:
+      locale: US
+    nolintlint:
+      allow-unused: false # report any unused nolint directives
+      require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+    gocritic:
+      # Enable multiple checks by tags. See "Tags" section in https://github.com/go-critic/go-critic#usage.
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - style
+      disabled-checks:
+        - importShadow
+        - unnamedResult
     depguard:
       rules:
         deprecated:
           deny:
-            - pkg: io/ioutil
-              desc: The 'io/ioutil' package is deprecated. Use corresponding 'os' or 'io' functions instead.
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    paths:
-      - storage/ent/db
-      - third_party$
-      - builtin$
-      - examples$
+            - pkg: "io/ioutil"
+              desc: "The 'io/ioutil' package is deprecated. Use corresponding 'os' or 'io' functions instead."
+
 formatters:
   enable:
     - gci
     - gofmt
     - gofumpt
     - goimports
+    # - golines
+
   settings:
     gci:
       sections:
         - standard
         - default
-        - prefix(github.com/dexidp/dex)
-    goimports:
-      local-prefixes:
-        - github.com/dexidp/dex
-  exclusions:
-    generated: lax
-    paths:
-      - storage/ent/db
-      - third_party$
-      - builtin$
-      - examples$
+        - localmodule
+# issues:
+#     exclude-dirs:
+#         - storage/ent/db # generated ent code

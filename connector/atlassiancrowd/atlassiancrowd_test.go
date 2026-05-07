@@ -124,19 +124,19 @@ func TestIdentityFromCrowdUser(t *testing.T) {
 	// unset
 	expectEquals(t, i.PreferredUsername, "")
 
-	c.PreferredUsernameField = "key"
+	c.Config.PreferredUsernameField = "key"
 	i = c.identityFromCrowdUser(user)
 	expectEquals(t, i.PreferredUsername, "12345")
 
-	c.PreferredUsernameField = "name"
+	c.Config.PreferredUsernameField = "name"
 	i = c.identityFromCrowdUser(user)
 	expectEquals(t, i.PreferredUsername, "testuser")
 
-	c.PreferredUsernameField = "email"
+	c.Config.PreferredUsernameField = "email"
 	i = c.identityFromCrowdUser(user)
 	expectEquals(t, i.PreferredUsername, "testuser@example.com")
 
-	c.PreferredUsernameField = "invalidstring"
+	c.Config.PreferredUsernameField = "invalidstring"
 	i = c.identityFromCrowdUser(user)
 	expectEquals(t, i.PreferredUsername, "")
 }
