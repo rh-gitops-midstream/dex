@@ -521,7 +521,7 @@ func testPasswordCRUD(t *testing.T, s storage.Storage) {
 	getAndCompare("jane@example.com", password1)
 
 	var passwordList []storage.Password
-	passwordList = append(passwordList, password1, password2)
+	passwordList = make([]storage.Password, 0, 2)
 
 	listAndCompare := func(want []storage.Password) {
 		passwords, err := s.ListPasswords(ctx)
