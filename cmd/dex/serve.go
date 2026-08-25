@@ -528,8 +528,8 @@ func runServe(options serveOptions) error {
 			cipherSuites = ciphers
 		}
 		curvePreferences := []tls.CurveID(nil)
-		if len(c.Web.AllowedCurvePreferences) > 0 {
-			curves, err := parseCurvePreferences(c.Web.AllowedCurvePreferences)
+		if len(c.Web.AllowedTLSCurvePreferences) > 0 {
+			curves, err := parseCurvePreferences(c.Web.AllowedTLSCurvePreferences)
 			if err != nil {
 				return fmt.Errorf("invalid TLS curve preferences: %w", err)
 			}
@@ -621,6 +621,23 @@ func parseCipherSuites(names []string) ([]uint16, error) {
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+// parseCurvePreferences parses a list of curve names into a list of CurveID values.
+func parseCurvePreferences(names []string) ([]tls.CurveID, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	curves := make([]tls.CurveID, 0, len(names))
+	for _, name := range names {
+		if id, ok := allowedCurveNames[name]; ok {
+			curves = append(curves, id)
+		} else {
+			return nil, fmt.Errorf("unknown curve: %q (supported: %v)",
+				name, mapKeys(allowedCurveNames))
+		}
+	}
+	return curves, nil
 }
 
 func applyConfigOverrides(options serveOptions, config *Config) {

@@ -167,18 +167,18 @@ type OAuth2 struct {
 
 // Web is the config format for the HTTP server.
 type Web struct {
-	HTTP                    string         `json:"http"`
-	HTTPS                   string         `json:"https"`
-	Headers                 Headers        `json:"headers"`
-	TLSCert                 string         `json:"tlsCert"`
-	TLSKey                  string         `json:"tlsKey"`
-	TLSMinVersion           string         `json:"tlsMinVersion"`
-	TLSMaxVersion           string         `json:"tlsMaxVersion"`
-	AllowedTLSCiphers       []string       `json:"allowedTLSCiphers"`
-	AllowedOrigins          []string       `json:"allowedOrigins"`
-	AllowedHeaders          []string       `json:"allowedHeaders"`
-	ClientRemoteIP          ClientRemoteIP `json:"clientRemoteIP"`
-	AllowedCurvePreferences []string       `json:"allowedCurvePreferences"`
+	HTTP                       string         `json:"http"`
+	HTTPS                      string         `json:"https"`
+	Headers                    Headers        `json:"headers"`
+	TLSCert                    string         `json:"tlsCert"`
+	TLSKey                     string         `json:"tlsKey"`
+	TLSMinVersion              string         `json:"tlsMinVersion"`
+	TLSMaxVersion              string         `json:"tlsMaxVersion"`
+	AllowedTLSCiphers          []string       `json:"allowedTLSCiphers"`
+	AllowedOrigins             []string       `json:"allowedOrigins"`
+	AllowedHeaders             []string       `json:"allowedHeaders"`
+	ClientRemoteIP             ClientRemoteIP `json:"clientRemoteIP"`
+	AllowedTLSCurvePreferences []string       `json:"allowedTLSCurvePreferences"`
 }
 
 var allowedCurveNames = map[string]tls.CurveID{
@@ -201,22 +201,7 @@ type ClientRemoteIP struct {
 	TrustedProxies []string `json:"trustedProxies"`
 }
 
-func parseCurvePreferences(names []string) ([]tls.CurveID, error) {
-	if len(names) == 0 {
-		return nil, nil
-	}
-	curves := make([]tls.CurveID, 0, len(names))
-	for _, name := range names {
-		if id, ok := allowedCurveNames[name]; ok {
-			curves = append(curves, id)
-		} else {
-			return nil, fmt.Errorf("unknown curve: %q (supported: %v)",
-				name, mapKeys(allowedCurveNames))
-		}
-	}
-	return curves, nil
-}
-
+// mapKeys returns the keys of a map as a slice.
 func mapKeys(m map[string]tls.CurveID) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
