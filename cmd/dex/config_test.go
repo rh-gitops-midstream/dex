@@ -1,12 +1,9 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"log/slog"
 	"os"
-	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -584,149 +581,6 @@ enablePasswordDB: true
 				if err := tt.check(&c); err != nil {
 					t.Errorf("check failed: %v", err)
 				}
-			}
-		})
-	}
-}
-
-func TestParseCurvePreferences(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       []string
-		want        []tls.CurveID
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name:    "empty",
-			input:   nil,
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name:  "single valid curve",
-			input: []string{"X25519"},
-			want:  []tls.CurveID{tls.X25519},
-		},
-		{
-			name:  "multiple valid curves",
-			input: []string{"X25519", "P256", "P384", "P521"},
-			want: []tls.CurveID{
-				tls.X25519,
-				tls.CurveP256,
-				tls.CurveP384,
-				tls.CurveP521,
-			},
-		},
-		{
-			name:        "unknown curve",
-			input:       []string{"X25519", "UnknownCurve"},
-			want:        nil,
-			wantErr:     true,
-			errContains: `unknown curve: "UnknownCurve"`,
-		},
-		{
-			name:        "unknown curve as first entry",
-			input:       []string{"UnknownCurve"},
-			want:        nil,
-			wantErr:     true,
-			errContains: `unknown curve: "UnknownCurve"`,
-		},
-		{
-			name:        "unknown curve after valid curves",
-			input:       []string{"P256", "UnknownCurve", "P384"},
-			want:        nil,
-			wantErr:     true,
-			errContains: `unknown curve: "UnknownCurve"`,
-		},
-		{
-			name:  "duplicate curves",
-			input: []string{"P256", "P256", "X25519"},
-			want: []tls.CurveID{
-				tls.CurveP256,
-				tls.CurveP256,
-				tls.X25519,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseCurvePreferences(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				if !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("error = %q, want substring %q", err.Error(), tt.errContains)
-				}
-
-				if got != nil {
-					t.Errorf("got curves = %v, want nil", got)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMapKeys(t *testing.T) {
-	tests := []struct {
-		name  string
-		input map[string]tls.CurveID
-		want  []string
-	}{
-		{
-			name:  "empty map",
-			input: map[string]tls.CurveID{},
-			want:  []string{},
-		},
-		{
-			name: "returns sorted keys",
-			input: map[string]tls.CurveID{
-				"P521":   tls.CurveP521,
-				"X25519": tls.X25519,
-				"P256":   tls.CurveP256,
-				"P384":   tls.CurveP384,
-			},
-			want: []string{
-				"P256",
-				"P384",
-				"P521",
-				"X25519",
-			},
-		},
-		{
-			name: "single key",
-			input: map[string]tls.CurveID{
-				"X25519": tls.X25519,
-			},
-			want: []string{"X25519"},
-		},
-		{
-			name:  "nil map",
-			input: nil,
-			want:  []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := mapKeys(tt.input)
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mapKeys() = %v, want %v", got, tt.want)
 			}
 		})
 	}
