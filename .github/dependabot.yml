@@ -3,12 +3,13 @@ version: 2
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
-    target-branch: "v2.43.1"
+    target-branch: "v2.45.0"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
     directory: "/"
-    target-branch: "v2.45.0"
+    target-branch: "v2.45.1"
     schedule:
       interval: "weekly"
+  
