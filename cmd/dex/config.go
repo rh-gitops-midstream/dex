@@ -111,11 +111,6 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func validateCipherSuites(names []string) error {
-	_, err := parseCipherSuites(names)
-	return err
-}
-
 type password storage.Password
 
 func (p *password) UnmarshalJSON(b []byte) error {
