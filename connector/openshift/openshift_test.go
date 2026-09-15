@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -258,6 +260,137 @@ func TestRefreshIdentityFailure(t *testing.T) {
 	expectEquals(t, connector.Identity{}, identity)
 }
 
+func TestOpenWithClientSecretFile(t *testing.T) {
+	s := newTestServer(map[string]interface{}{})
+	defer s.Close()
+
+	clientSecretFile := filepath.Join(t.TempDir(), "client-secret")
+	err := os.WriteFile(clientSecretFile, []byte("client-secret-from-file\n"), 0o600)
+	expectNil(t, err)
+
+	c := Config{
+		Issuer:           s.URL,
+		ClientID:         "testClientId",
+		ClientSecretFile: clientSecretFile,
+		RedirectURI:      "https://localhost/callback",
+		InsecureCA:       true,
+	}
+
+	logger := slog.New(slog.DiscardHandler)
+	oconfig, err := c.Open("id", logger)
+
+	expectNil(t, err)
+	oc, ok := oconfig.(*openshiftConnector)
+	expectEquals(t, ok, true)
+	expectEquals(t, oc.clientSecret, "")
+	expectEquals(t, oc.clientSecretFile, clientSecretFile)
+	expectEquals(t, oc.oauth2Config.ClientSecret, "client-secret-from-file")
+}
+
+func TestOpenFailsBothClientSecretAndClientSecretFile(t *testing.T) {
+	s := newTestServer(map[string]interface{}{})
+	defer s.Close()
+
+	clientSecretFile := filepath.Join(t.TempDir(), "client-secret")
+	err := os.WriteFile(clientSecretFile, []byte("client-secret"), 0o600)
+	expectNil(t, err)
+
+	c := Config{
+		Issuer:           s.URL,
+		ClientID:         "testClientId",
+		ClientSecret:     "testClientSecret",
+		ClientSecretFile: clientSecretFile,
+		RedirectURI:      "https://localhost/callback",
+		InsecureCA:       true,
+	}
+
+	logger := slog.New(slog.DiscardHandler)
+	_, err = c.Open("id", logger)
+	expectNotNil(t, err)
+}
+
+func TestOpenFailsNeitherClientSecretNorClientSecretFile(t *testing.T) {
+	s := newTestServer(map[string]interface{}{})
+	defer s.Close()
+
+	c := Config{
+		Issuer:      s.URL,
+		ClientID:    "testClientId",
+		RedirectURI: "https://localhost/callback",
+		InsecureCA:  true,
+	}
+
+	logger := slog.New(slog.DiscardHandler)
+	_, err := c.Open("id", logger)
+	expectNotNil(t, err)
+}
+
+func TestClientSecretFileRotation(t *testing.T) {
+	s := newTestServer(map[string]interface{}{
+		usersURLPath: user{
+			ObjectMeta: k8sapi.ObjectMeta{
+				Name: "jdoe",
+				UID:  "12345",
+			},
+			FullName: "John Doe",
+			Groups:   []string{"users"},
+		},
+	})
+	defer s.Close()
+
+	clientSecretFile := filepath.Join(t.TempDir(), "client-secret")
+	err := os.WriteFile(clientSecretFile, []byte("initial-client-secret"), 0o600)
+	expectNil(t, err)
+
+	h, err := httpclient.NewHTTPClient(nil, true)
+	expectNil(t, err)
+
+	oc := openshiftConnector{
+		apiURL:           s.URL,
+		httpClient:       h,
+		clientSecretFile: clientSecretFile,
+		oauth2Config: &oauth2.Config{
+			ClientID:     "testClientId",
+			ClientSecret: "initial-client-secret",
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  fmt.Sprintf("%s/oauth/authorize", s.URL),
+				TokenURL: fmt.Sprintf("%s/oauth/token", s.URL),
+			},
+		},
+	}
+
+	cfg1, err := oc.currentOAuth2Config()
+	expectNil(t, err)
+	expectEquals(t, cfg1.ClientSecret, "initial-client-secret")
+
+	err = os.WriteFile(clientSecretFile, []byte("rotated-client-secret"), 0o600)
+	expectNil(t, err)
+
+	cfg2, err := oc.currentOAuth2Config()
+	expectNil(t, err)
+	expectEquals(t, cfg2.ClientSecret, "rotated-client-secret")
+
+	// Original config should not be mutated
+	expectEquals(t, oc.oauth2Config.ClientSecret, "initial-client-secret")
+}
+
+func TestCurrentOAuth2ConfigWithoutClientSecretFile(t *testing.T) {
+	oauth2Cfg := &oauth2.Config{
+		ClientID:     "testClientId",
+		ClientSecret: "static-secret",
+	}
+	oc := openshiftConnector{
+		oauth2Config: oauth2Cfg,
+	}
+
+	cfg, err := oc.currentOAuth2Config()
+	expectNil(t, err)
+	// Should return the same pointer when no client secret file is configured
+	if cfg != oauth2Cfg {
+		t.Error("expected same oauth2Config pointer when no client secret file is configured")
+	}
+}
+
 func newTestServer(responses map[string]interface{}) *httptest.Server {
 	var s *httptest.Server
 	s = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -280,18 +413,21 @@ func newTestServer(responses map[string]interface{}) *httptest.Server {
 }
 
 func expectNil(t *testing.T, a interface{}) {
+	t.Helper()
 	if a != nil {
 		t.Errorf("Expected %+v to equal nil", a)
 	}
 }
 
 func expectEquals(t *testing.T, a interface{}, b interface{}) {
+	t.Helper()
 	if !reflect.DeepEqual(a, b) {
 		t.Errorf("Expected %+v to equal %+v", a, b)
 	}
 }
 
 func expectNotNil(t *testing.T, a interface{}) {
+	t.Helper()
 	if a == nil {
 		t.Errorf("Expected %+v to not equal nil", a)
 	}
