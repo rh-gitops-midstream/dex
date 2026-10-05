@@ -521,20 +521,14 @@ func runServe(options serveOptions) error {
 			tlsMaxVersion = allowedTLSVersions[c.Web.TLSMaxVersion]
 		}
 
-		cipherSuites := allowedTLSCiphers
-		if len(c.Web.tlsCipherIDs) > 0 {
-			cipherSuites = c.Web.tlsCipherIDs
-		}
-		curvePreferences := []tls.CurveID(nil)
-		if len(c.Web.tlsCurveIDs) > 0 {
-			curvePreferences = c.Web.tlsCurveIDs
-		}
 		baseTLSConfig := &tls.Config{
 			MinVersion:               uint16(tlsMinVersion),
 			MaxVersion:               uint16(tlsMaxVersion),
-			CipherSuites:             cipherSuites,
+			CipherSuites:             allowedTLSCiphers,
 			PreferServerCipherSuites: true,
-			CurvePreferences:         curvePreferences,
+		}
+		if err := applyWebTLSPreferences(baseTLSConfig, c.Web); err != nil {
+			return fmt.Errorf("invalid config: %v", err)
 		}
 
 		tlsConfig, err := newTLSReloader(logger, c.Web.TLSCert, c.Web.TLSKey, "", baseTLSConfig)
@@ -597,22 +591,47 @@ func runServe(options serveOptions) error {
 	return nil
 }
 
+// applyWebTLSPreferences sets the cipher suites and curve preferences configured in web on cfg.
+// Settings that are not configured leave cfg unchanged.
+func applyWebTLSPreferences(cfg *tls.Config, web Web) error {
+	if len(web.TLSCiphers) > 0 {
+		ciphers, err := parseCipherSuites(web.TLSCiphers)
+		if err != nil {
+			return fmt.Errorf("invalid TLS cipher suites: %w", err)
+		}
+		cfg.CipherSuites = ciphers
+	}
+	if len(web.TLSCurvePreferences) > 0 {
+		curves, err := parseCurvePreferences(web.TLSCurvePreferences)
+		if err != nil {
+			return fmt.Errorf("invalid TLS curve preferences: %w", err)
+		}
+		cfg.CurvePreferences = curves
+	}
+	return nil
+}
+
 // parseCipherSuites parses a list of cipher suite names and returns their corresponding IDs.
+// Only TLS 1.0–1.2 cipher suites are accepted, since TLS 1.3 cipher suites are not configurable.
 func parseCipherSuites(names []string) ([]uint16, error) {
-	cipherMap := make(map[string]uint16)
+	cipherMap := make(map[string]*tls.CipherSuite)
 	for _, cs := range tls.CipherSuites() {
-		cipherMap[cs.Name] = cs.ID
+		cipherMap[cs.Name] = cs
 	}
 	for _, cs := range tls.InsecureCipherSuites() {
-		cipherMap[cs.Name] = cs.ID
+		cipherMap[cs.Name] = cs
 	}
+
 	ids := make([]uint16, 0, len(names))
 	for _, name := range names {
-		id, ok := cipherMap[name]
+		cs, ok := cipherMap[name]
 		if !ok {
 			return nil, fmt.Errorf("unsupported cipher suite %q", name)
 		}
-		ids = append(ids, id)
+		if !slices.ContainsFunc(cs.SupportedVersions, func(v uint16) bool { return v <= tls.VersionTLS12 }) {
+			return nil, fmt.Errorf("cipher suite %q is TLS 1.3 only: TLS 1.3 cipher suites are not configurable", name)
+		}
+		ids = append(ids, cs.ID)
 	}
 	return ids, nil
 }
