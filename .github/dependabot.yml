@@ -12,4 +12,10 @@ updates:
     target-branch: "v2.45.1"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    target-branch: "v2.46.1"
+    schedule:
+      interval: "weekly"
   
